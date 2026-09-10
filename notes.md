@@ -57,7 +57,7 @@ START
 - Frontend quiz prototype
 - Session creation
 - Answer/result recording
-- Timestamps (not accurate yet)
+- Timestamps (COMPLETE)
 
 # Next Steps
 

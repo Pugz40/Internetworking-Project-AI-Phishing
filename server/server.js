@@ -58,20 +58,22 @@ app.post("/api/result", (req, res) => {
         emailSource,
         actualLabel,
         userAnswer,
-        correct
+        correct,
+        responseTime
     } = req.body;
 
     db.prepare(`
         INSERT INTO user_results
-        (session_id, email_id, email_source, actual_label, user_answer, correct)
-        VALUES (?, ?, ?, ?, ?, ?)
+        (session_id, email_id, email_source, actual_label, user_answer, correct, response_time)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(
         sessionId,
         emailId,
         emailSource,
         actualLabel,
         userAnswer,
-        correct
+        correct,
+        responseTime
     );
 
     res.json({ message: "Result saved!" });

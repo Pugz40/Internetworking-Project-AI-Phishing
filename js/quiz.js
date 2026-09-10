@@ -1,5 +1,6 @@
 let currentEmail;
 let sessionId;
+let questionStartTime;
 
 
 function loadEmail() {
@@ -7,6 +8,7 @@ function loadEmail() {
         .then(response => response.json())
         .then(email => {
             currentEmail = email;
+            questionStartTime = Date.now();
 
             document.getElementById("email").textContent =
                 email.text || email.body;
@@ -15,7 +17,7 @@ function loadEmail() {
 
 function checkAnswer(answer) {
     const correct = answer === currentEmail.label ? 1 : 0;
-
+    const responseTime = (Date.now() - questionStartTime) / 1000; // response time in seconds
     fetch("/api/result", {
         method: "POST",
         headers: {
@@ -27,7 +29,8 @@ function checkAnswer(answer) {
             emailSource: currentEmail.source,
             actualLabel: currentEmail.label,
             userAnswer: answer,
-            correct: correct
+            correct: correct,
+            responseTime: responseTime
         })
     })
         .then(response => response.json())
