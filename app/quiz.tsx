@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 
 
 import { useEffect, useRef, useState } from "react";
-import { submitAnswer, type Email } from "./actions";
+import { getFeedback, submitAnswer, type Email, type Feedback } from "./actions";
+import FeedbackPanel, { type FeedbackState } from "./feedback-panel";
 type QuizMode = "training" | "final";
 const TOTAL_QUESTIONS = 5;
 
@@ -27,8 +28,11 @@ export default function Quiz({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [score, setScore] = useState(0);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [feedbackState, setFeedbackState] = useState<FeedbackState>("loading");
 
   const shownAt = useRef(0);
+  const feedbackRequest = useRef(0); // ignore replies that arrive after moving to the next email
 
   useEffect(() => {
     shownAt.current = performance.now();
@@ -54,6 +58,22 @@ export default function Quiz({
         correct: response.correct,
         next: response.next,
       });
+
+      if (mode === "training") {
+        const requestId = ++feedbackRequest.current;
+        setFeedback(null);
+        setFeedbackState("loading");
+        getFeedback(email.email_id)
+          .then((fb) => {
+            if (requestId !== feedbackRequest.current) return;
+            setFeedback(fb);
+            setFeedbackState(fb ? "ready" : "failed");
+          })
+          .catch(() => {
+            if (requestId !== feedbackRequest.current) return;
+            setFeedbackState("failed");
+          });
+      }
     if (mode === "final") {
   setScore((currentScore) => currentScore + response.correct);
 }
@@ -82,6 +102,8 @@ function continueQuiz() {
     return;
   }
 
+  feedbackRequest.current++;
+  setFeedback(null);
   setEmail(result.next);
   setQuestionNumber((current) => current + 1);
   setResult(null);
@@ -327,11 +349,11 @@ function continueQuiz() {
                       {result.correct ? "Correct!" : "Not quite."}
                     </h2>
 
-                    <p className="mt-1 text-sm leading-6 text-slate-700">
-                      {result.correct
-                        ? "You identified this email correctly. Keep applying the same careful checks to the next message."
-                        : "Review the sender, subject, message wording and any links or requests. Look for details that support your decision."}
-                    </p>
+                    <FeedbackPanel
+                      correct={result.correct === 1}
+                      state={feedbackState}
+                      feedback={feedback}
+                    />
 
                     <button
                       type="button"
