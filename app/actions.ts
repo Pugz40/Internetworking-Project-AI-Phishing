@@ -1,5 +1,6 @@
 "use server";
 
+import { env } from "cloudflare:workers";
 import { getSupabase } from "../lib/supabase";
 
 export type Email = {
@@ -70,5 +71,51 @@ export async function submitAnswer(emailId: number, userAnswer: 0 | 1, responseT
   });
   if (resultError) throw new Error(resultError.message);
 
-  return { correct, next: await getRandomEmail() };
+  return { correct, actualLabel, next: await getRandomEmail() };
+}
+
+export type FeedbackBullet = {
+  label: string;
+  text?: string;
+  terms?: string[]; // words the model picked up on, shown in monospace
+  tip?: string; // short italic advice
+};
+
+export type Feedback = {
+  is_phishing: boolean;
+  bullets: FeedbackBullet[];
+};
+
+// Asks the ICA feedback service (ica_export/api.py) to analyse this exact email.
+// Returns null if the service is not configured or unreachable, so the quiz still works.
+export async function getFeedback(emailId: number): Promise<Feedback | null> {
+  const base = env.FEEDBACK_API_URL?.trim();
+  if (!base) return null;
+
+  try {
+    const supabase = getSupabase();
+    const { data: email, error } = await supabase
+      .from("human_emails")
+      .select("subject, body, label")
+      .eq("email_id", emailId)
+      .single();
+    if (error) return null;
+
+    const res = await fetch(`${base.replace(/\/$/, "")}/feedback`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(env.FEEDBACK_API_KEY ? { "x-api-key": env.FEEDBACK_API_KEY } : {}),
+      },
+      body: JSON.stringify({
+        text: `${email.subject}\n\n${email.body}`,
+        is_phishing: Number(email.label) === 1,
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as Feedback;
+  } catch {
+    return null;
+  }
 }

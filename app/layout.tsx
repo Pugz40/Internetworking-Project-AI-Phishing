@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Is this phishing email?",
+  title: "Improving Cybersecurity Awareness",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

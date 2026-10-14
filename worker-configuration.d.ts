@@ -6,6 +6,8 @@ interface __BaseEnv_CloudflareEnv {
 	ASSETS: Fetcher;
 	SUPABASE_URL: string;
 	SUPABASE_KEY: string;
+	FEEDBACK_API_URL?: string;
+	FEEDBACK_API_KEY?: string;
 }
 declare namespace Cloudflare {
 	interface Env extends __BaseEnv_CloudflareEnv {}
