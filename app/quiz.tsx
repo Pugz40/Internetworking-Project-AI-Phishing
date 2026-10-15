@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { getFeedback, submitAnswer, type Email, type Feedback } from "./actions";
 import FeedbackPanel, { type FeedbackState } from "./feedback-panel";
+import { getSessionId } from "./session";
 type QuizMode = "training" | "final";
 const TOTAL_QUESTIONS = 5;
 
@@ -38,6 +39,11 @@ export default function Quiz({
     shownAt.current = performance.now();
   }, [email]);
 
+  // Start (or reuse) this visit's session when the quiz opens
+  useEffect(() => {
+    getSessionId().catch(() => {});
+  }, []);
+
   async function answer(userAnswer: 0 | 1) {
     if (pending || result) return;
 
@@ -48,7 +54,9 @@ export default function Quiz({
     setError(null);
 
     try {
+      const sessionId = await getSessionId();
       const response = await submitAnswer(
+        sessionId,
         email.email_id,
         userAnswer,
         responseTime

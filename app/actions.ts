@@ -14,55 +14,70 @@ export async function getRandomEmail(): Promise<Email> {
   const supabase = getSupabase();
 
   const { count, error: countError } = await supabase
-    .from("human_emails")
+    .from("ai_emails")
     .select("email_id", { count: "exact", head: true });
   if (countError) throw new Error(countError.message);
-  if (!count) throw new Error("human_emails is empty");
+  if (!count) throw new Error("ai_emails is empty");
 
   const offset = Math.floor(Math.random() * count);
   const { data, error } = await supabase
-    .from("human_emails")
-    .select("email_id, sender, subject, body")
+    .from("ai_emails")
+    .select("email_id, subject, body")
     .order("email_id")
     .range(offset, offset)
     .single();
   if (error) throw new Error(error.message);
 
-  return data;
+  // ai_emails has no sender column
+  return { ...data, sender: "Unknown sender" };
+}
+
+// Draft: max+1 can collide if two rows are inserted at the same moment
+async function nextId(table: "quiz_sessions" | "user_results"): Promise<number> {
+  const { data, error } = await getSupabase()
+    .from(table)
+    .select("id")
+    .order("id", { ascending: false })
+    .limit(1);
+  if (error) throw new Error(error.message);
+  return data.length ? data[0].id + 1 : 0;
+}
+
+// Called once per browser tab visit (see app/session.ts)
+export async function startSession(): Promise<number> {
+  const id = await nextId("quiz_sessions");
+  const { error } = await getSupabase().from("quiz_sessions").insert({ id });
+  if (error) throw new Error(error.message);
+  return id;
 }
 
 // userAnswer: 0 = fake, 1 = real. responseTime in seconds.
-export async function submitAnswer(emailId: number, userAnswer: 0 | 1, responseTime: number) {
+export async function submitAnswer(
+  sessionId: number,
+  emailId: number,
+  userAnswer: 0 | 1,
+  responseTime: number
+) {
   const supabase = getSupabase();
 
   const { data: email, error: emailError } = await supabase
-    .from("human_emails")
+    .from("ai_emails")
     .select("label")
     .eq("email_id", emailId)
     .single();
   if (emailError) throw new Error(emailError.message);
 
-  // human_emails.label is 1 = phishing; convert to answer scale (0 = fake, 1 = real)
+  // ai_emails.label is 1 = phishing; convert to answer scale (0 = fake, 1 = real)
   const actualLabel = 1 - Number(email.label);
   const correct = userAnswer === actualLabel ? 1 : 0;
 
-  // Draft: max+1 can collide if two answers are submitted at the same moment
-  const { data: last, error: lastError } = await supabase
-    .from("quiz_sessions")
-    .select("id")
-    .order("id", { ascending: false })
-    .limit(1);
-  if (lastError) throw new Error(lastError.message);
-  const id = last.length ? last[0].id + 1 : 0;
-
-  const { error: sessionError } = await supabase.from("quiz_sessions").insert({ id });
-  if (sessionError) throw new Error(sessionError.message);
+  const id = await nextId("user_results");
 
   const { error: resultError } = await supabase.from("user_results").insert({
     id,
-    session_id: id,
+    session_id: sessionId,
     email_id: emailId,
-    email_source: "human",
+    email_source: "ai",
     actual_label: actualLabel,
     user_answer: userAnswer,
     correct,
@@ -95,7 +110,7 @@ export async function getFeedback(emailId: number): Promise<Feedback | null> {
   try {
     const supabase = getSupabase();
     const { data: email, error } = await supabase
-      .from("human_emails")
+      .from("ai_emails")
       .select("subject, body, label")
       .eq("email_id", emailId)
       .single();
