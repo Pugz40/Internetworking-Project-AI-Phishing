@@ -22,14 +22,13 @@ export async function getRandomEmail(): Promise<Email> {
   const offset = Math.floor(Math.random() * count);
   const { data, error } = await supabase
     .from("ai_emails")
-    .select("email_id, subject, body")
+    .select("email_id, sender, subject, body")
     .order("email_id")
     .range(offset, offset)
     .single();
   if (error) throw new Error(error.message);
 
-  // ai_emails has no sender column
-  return { ...data, sender: "Unknown sender" };
+  return { ...data, sender: data.sender ?? "Unknown sender" };
 }
 
 // Draft: max+1 can collide if two rows are inserted at the same moment
