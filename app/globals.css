@@ -11,6 +11,10 @@
 
 body {
   margin: 0;
+  .email-link {
+  color: blue;
+  text-decoration: underline;
+}
 }
 
 a {

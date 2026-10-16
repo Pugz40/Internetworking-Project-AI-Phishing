@@ -10,6 +10,7 @@ import { getSessionId } from "./session";
 type QuizMode = "training" | "final";
 const TOTAL_QUESTIONS = 5;
 
+
 type AnswerResult = {
   correct: number;
   next: Email;
