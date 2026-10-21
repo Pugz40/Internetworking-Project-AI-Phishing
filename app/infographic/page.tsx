@@ -34,9 +34,9 @@ const tips = [
   },
   {
     number: "06",
-    title: "REPLACE THIS SECTION OR KEEP?",
+    title: "Double check everything",
     description:
-      "Change this text for 6th tip or add AI assisted tool its up to you guys? Potentially sample email? I don't know.",
+      "If you're unsure about an email, make sure you double check everything. AI-assisted analysis can highlight suspicious wording, links, and sender details, but always verify the evidence yourself.",
   },
 ];
 

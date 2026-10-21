@@ -60,7 +60,8 @@ export default function Quiz({
         sessionId,
         email.email_id,
         userAnswer,
-        responseTime
+        responseTime,
+        mode
       );
 
       setResult({

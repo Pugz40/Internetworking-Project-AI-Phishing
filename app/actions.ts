@@ -55,7 +55,8 @@ export async function submitAnswer(
   sessionId: number,
   emailId: number,
   userAnswer: 0 | 1,
-  responseTime: number
+  responseTime: number,
+  mode: "training" | "final"
 ) {
   const supabase = getSupabase();
 
@@ -77,6 +78,7 @@ export async function submitAnswer(
     session_id: sessionId,
     email_id: emailId,
     email_source: "ai",
+    mode,
     actual_label: actualLabel,
     user_answer: userAnswer,
     correct,
@@ -133,3 +135,65 @@ export async function getFeedback(emailId: number): Promise<Feedback | null> {
     return null;
   }
 }
+
+
+export type SessionEmailResult = {
+  email_id: number;
+  sender: string;
+  subject: string;
+  body: string;
+  user_answer: 0 | 1;
+  actual_label: 0 | 1;
+  correct: number;
+  response_time: number | null;
+};
+
+export async function getSessionResults(
+  sessionId: number,
+  mode: "training" | "final"
+): Promise<SessionEmailResult[]> {
+  const supabase = getSupabase();
+
+  const { data: results, error: resultsError } = await supabase
+    .from("user_results")
+    .select(
+      "email_id, user_answer, actual_label, correct, response_time, email_source"
+    )
+    .eq("session_id", sessionId)
+    .eq("email_source", "ai")
+    .eq("mode", mode)
+    .order("answered_at", { ascending: true });
+
+  if (resultsError) throw new Error(resultsError.message);
+  if (!results?.length) return [];
+
+  const emailIds = results.map((result) => result.email_id);
+
+  const { data: emails, error: emailsError } = await supabase
+    .from("ai_emails")
+    .select("email_id, sender, subject, body")
+    .in("email_id", emailIds);
+
+  if (emailsError) throw new Error(emailsError.message);
+
+  const emailMap = new Map(
+    (emails ?? []).map((email) => [email.email_id, email])
+  );
+
+  return results.flatMap((result) => {
+    const email = emailMap.get(result.email_id);
+    if (!email) return [];
+
+    return [{
+      email_id: email.email_id,
+      sender: email.sender ?? "Unknown sender",
+      subject: email.subject ?? "(No subject)",
+      body: email.body ?? "",
+      user_answer: result.user_answer as 0 | 1,
+      actual_label: result.actual_label as 0 | 1,
+      correct: result.correct,
+      response_time: result.response_time,
+    }];
+  });
+}
+
