@@ -10,6 +10,29 @@ import { getSessionId } from "./session";
 type QuizMode = "training" | "final";
 const TOTAL_QUESTIONS = 5;
 
+// URLs (http/https/www) and bare domains like chaseonline-login.com, but not the domain part of an email address
+const LINK_PATTERN =
+  /(?:https?:\/\/|www\.)[^\s<>"']+|(?<![@\w.-])(?:[a-z0-9-]+\.)+(?:com|net|org|info|biz|io|co|uk|au|nz|us|me|xyz|top|online|site|app|ru|cn|tk)(?:\/[^\s<>"']*)?(?![\w@-])/gi;
+
+// Wraps links in .email-link (globals.css). Not clickable: these are phishing samples
+function withLinks(text: string) {
+  const parts: React.ReactNode[] = [];
+  let last = 0;
+  for (const match of text.matchAll(LINK_PATTERN)) {
+    const url = match[0].replace(/[.,;:!?)\]]+$/, ""); // drop trailing punctuation
+    const start = match.index;
+    parts.push(text.slice(last, start));
+    parts.push(
+      <span key={start} title={url} className="email-link">
+        {url}
+      </span>
+    );
+    last = start + url.length;
+  }
+  parts.push(text.slice(last));
+  return parts;
+}
+
 
 type AnswerResult = {
   correct: number;
@@ -256,7 +279,7 @@ function continueQuiz() {
           {/* Email body */}
           <div className="h-64 overflow-y-auto rounded-xl bg-slate-50 p-5 sm:p-6">
             <p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
-              {email.body}
+              {withLinks(email.body)}
             </p>
           </div>
 
